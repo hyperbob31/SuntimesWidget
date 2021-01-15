@@ -274,9 +274,12 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
 
             if (data != null)
             {
+                Calendar sunrise = data.dataAstro.sunriseCalendarToday();
+                int offset_minutes = -1 * (sunrise.get(Calendar.HOUR_OF_DAY) * 60 + sunrise.get(Calendar.MINUTE));
+
                 // draw astro twilight
                 p.setColor(colors.colorAstro);
-                if (!(layer_astro = drawRect(data.dataAstro, c, p)))
+                if (!(layer_astro = drawRect(data.dataAstro, c, p, offset_minutes)))
                 {
                     if (data.dataNautical.hasSunriseTimeToday() || data.dataNautical.hasSunsetTimeToday())
                     {
@@ -286,7 +289,7 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
 
                 // draw nautical twilight
                 p.setColor(colors.colorNautical);
-                if (!(layer_nautical = drawRect(data.dataNautical, c, p)))
+                if (!(layer_nautical = drawRect(data.dataNautical, c, p, offset_minutes)))
                 {
                     if (data.dataCivil.hasSunriseTimeToday() || data.dataCivil.hasSunsetTimeToday())
                     {
@@ -296,7 +299,7 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
 
                 // draw civil twilight
                 p.setColor(colors.colorCivil);
-                if (!(layer_civil = drawRect(data.dataCivil, c, p)))
+                if (!(layer_civil = drawRect(data.dataCivil, c, p, offset_minutes)))
                 {
                     if (data.dataActual.hasSunriseTimeToday() || data.dataActual.hasSunsetTimeToday())
                     {
@@ -306,7 +309,7 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
 
                 // draw foreground (day)
                 p.setColor(colors.colorDay);
-                if (!drawRect(data.dataActual, c, p))
+                if (!drawRect(data.dataActual, c, p, offset_minutes))
                 {
                     boolean noLayers = !layer_astro && !layer_nautical && !layer_civil;
                     if (noLayers)
@@ -352,12 +355,12 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
                     switch (colors.option_drawNow) {
                         case LightMapColors.DRAW_SUN2:
                             DashPathEffect dashed = new DashPathEffect(new float[] {4, 2}, 0);
-                            drawPoint(data.now(), pointRadius, pointStroke, c, p, Color.TRANSPARENT, colors.colorPointStroke, dashed);
+                            drawPoint(data.now(), offset_minutes, pointRadius, pointStroke, c, p, Color.TRANSPARENT, colors.colorPointStroke, dashed);
                             break;
 
                         case LightMapColors.DRAW_SUN1:
                         default:
-                            drawPoint(data.now(), pointRadius, pointStroke, c, p, colors.colorPointFill, colors.colorPointStroke, null);
+                            drawPoint(data.now(), offset_minutes, pointRadius, pointStroke, c, p, colors.colorPointFill, colors.colorPointStroke, null);
                             break;
                     }
                 }
@@ -397,8 +400,11 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
             c.drawRect(0, 0, w, h, p);
         }
 
+        protected boolean drawRect( SuntimesRiseSetData data, Canvas c, Paint p ) {
+            return drawRect(data, c, p, 0);
+        }
         @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-        protected boolean drawRect( SuntimesRiseSetData data, Canvas c, Paint p )
+        protected boolean drawRect( SuntimesRiseSetData data, Canvas c, Paint p, int offset_minutes )
         {
             Calendar riseTime = data.sunriseCalendarToday();
             Calendar setTime = data.sunsetCalendarToday();
@@ -414,7 +420,7 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
             if (riseTime != null)
             {
                 int dayDiff = riseTime.get(Calendar.DAY_OF_YEAR) - data.calendar().get(Calendar.DAY_OF_YEAR);  // average case: 0; edge cases: -1, 1
-                double riseMinute = riseTime.get(Calendar.HOUR_OF_DAY) * 60 + riseTime.get(Calendar.MINUTE);
+                double riseMinute = (riseTime.get(Calendar.HOUR_OF_DAY) * 60 + riseTime.get(Calendar.MINUTE)) + offset_minutes;
                 double riseR = ((dayDiff * 60 * 24) + riseMinute) / MINUTES_IN_DAY;
                 if (riseR > 1) {
                     riseR = 1;
@@ -428,7 +434,7 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
             if (setTime != null)
             {
                 int dayDiff = setTime.get(Calendar.DAY_OF_YEAR) - data.calendar().get(Calendar.DAY_OF_YEAR);  // average case: 0; edge cases: -1, 1
-                double setMinute = setTime.get(Calendar.HOUR_OF_DAY) * 60 + setTime.get(Calendar.MINUTE);
+                double setMinute = setTime.get(Calendar.HOUR_OF_DAY) * 60 + setTime.get(Calendar.MINUTE) + offset_minutes;
                 double setR = ((dayDiff * 60 * 24) + setMinute) / MINUTES_IN_DAY;
                 if (setR > 1) {
                     setR = 1;
@@ -450,14 +456,14 @@ public class LightMapView extends android.support.v7.widget.AppCompatImageView
             return true;
         }
 
-        protected void drawPoint(Calendar calendar, int radius, int strokeWidth, Canvas c, Paint p, int fillColor, int strokeColor, DashPathEffect strokeEffect)
+        protected void drawPoint(Calendar calendar, int offset_minutes, int radius, int strokeWidth, Canvas c, Paint p, int fillColor, int strokeColor, DashPathEffect strokeEffect)
         {
             if (calendar != null)
             {
                 int w = c.getWidth();
                 int h = c.getHeight();
 
-                double minute = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE);
+                double minute = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE) + offset_minutes;
                 int x = (int) Math.round((minute / MINUTES_IN_DAY) * w);
                 int y = h / 2;
 
